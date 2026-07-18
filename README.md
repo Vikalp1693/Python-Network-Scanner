@@ -1,64 +1,71 @@
-# 🔍 Python Network Scanner Professional v6.0
+# 🌐 Python Network Scanner
 
-A professional multithreaded network scanner built with Python and Scapy.
+![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
+![Scapy](https://img.shields.io/badge/Scapy-Networking-green)
+![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-lightgrey)
+![License](https://img.shields.io/badge/License-MIT-yellow)
 
-The scanner discovers active devices on a local network using ARP requests and provides detailed information such as IP address, MAC address, hostname, and device vendor. It also generates CSV and JSON reports for later analysis.
+A professional Python-based network scanner that discovers devices on a local network using ARP requests, resolves hostnames, identifies MAC vendors using the official IEEE OUI database, and exports scan results in CSV and JSON formats.
+
+Designed for learning networking fundamentals, cybersecurity, and Python development.
 
 ---
 
-## 🚀 Features
+## ✨ Features
 
-- ARP Network Discovery
-- Multithreaded Device Processing
-- Hostname Resolution
-- MAC Vendor Identification
+- Discover active devices on a local network
+- Retrieve IP Address
+- Retrieve MAC Address
+- Resolve Hostname
+- Offline IEEE MAC Vendor Lookup
 - CSV Report Generation
 - JSON Report Generation
-- Timestamped Reports
-- Professional Logging
-- Thread-safe Progress Bar
-- Configurable Worker Threads
-- Colored Terminal Output
-- Automatic Device Sorting
+- Colorful Terminal Output
+- Progress Bar
+- Multi-threaded Device Processing
+- Logging Support
+- Cross Platform (Windows & Linux)
 
 ---
 
-## 🛠 Technologies Used
+## 📂 Project Structure
 
-- Python 3.x
-- Scapy
-- Colorama
-- Tabulate
-- mac-vendor-lookup
+```text
+Python-Network-Scanner/
+│
+├── scanner.py
+├── scanner_core.py
+├── vendor_lookup.py
+├── report.py
+├── logger.py
+├── progress.py
+├── banner.py
+├── config.py
+├── utils.py
+│
+├── data/
+│   └── oui.csv
+│
+├── reports/
+├── logs/
+├── screenshots/
+│
+├── requirements.txt
+├── LICENSE
+├── README.md
+└── .gitignore
+```
 
 ---
 
-## 📦 Installation
+## ⚙️ Installation
 
 Clone the repository:
 
 ```bash
-git clone https://github.com/Vikalp1693/Python-Network-Scanner.git
-```
+git clone https://github.com/YOUR_USERNAME/Python-Network-Scanner.git
 
-Move into the project directory:
-
-```bash
 cd Python-Network-Scanner
-```
-
-Create a virtual environment:
-
-```bash
-python -m venv venv
-```
-
-Activate it.
-
-Windows:
-
-```powershell
-.\venv\Scripts\activate
 ```
 
 Install dependencies:
@@ -69,21 +76,21 @@ pip install -r requirements.txt
 
 ---
 
-## ▶ Usage
+## ▶️ Usage
 
-Interactive mode:
+Interactive Mode
 
 ```bash
 python scanner.py
 ```
 
-Specify a network:
+Command Line
 
 ```bash
 python scanner.py -n 192.168.1.0/24
 ```
 
-Specify worker threads:
+Custom Threads
 
 ```bash
 python scanner.py -n 192.168.1.0/24 -t 20
@@ -94,119 +101,97 @@ python scanner.py -n 192.168.1.0/24 -t 20
 ## 📊 Example Output
 
 ```
-====================================================================================================
-Python Network Scanner Professional
-====================================================================================================
-
-Target Network : 192.168.1.0/24
-
-+---------------+-------------------+-------------+------------+
-| IP Address    | MAC Address       | Vendor      | Hostname   |
-+---------------+-------------------+-------------+------------+
-
-Devices Found : 8
-
-Time Taken : 2.41 sec
++---------------+-------------------+---------------------------+------------+
+| IP Address    | MAC Address       | Vendor                    | Hostname   |
++---------------+-------------------+---------------------------+------------+
+| 192.168.1.1   | 98:9D:B2:56:83:E9 | Cisco Systems             | Router     |
+| 192.168.1.15  | 80:D2:1D:EF:11:DD | AzureWave Technology Inc. | Desktop    |
+| 192.168.1.23  | 38:E2:CA:11:22:33 | Katun Corporation         | Laptop     |
++---------------+-------------------+---------------------------+------------+
 ```
 
 ---
 
-## 📁 Project Structure
+## 📄 Reports
+
+The scanner automatically generates:
 
 ```
-Python-Network-Scanner/
-│
-├── scanner.py
-├── scanner_core.py
-├── utils.py
-├── report.py
-├── progress.py
-├── banner.py
-├── logger.py
-├── config.py
-│
-├── reports/
-├── logs/
-├── screenshots/
-│
-├── README.md
-├── requirements.txt
-└── .gitignore
+reports/
+
+scan_YYYY-MM-DD_HH-MM-SS.csv
+
+scan_YYYY-MM-DD_HH-MM-SS.json
 ```
+
+---
+
+## 📜 Log Files
+
+Logs are stored inside:
+
+```
+logs/
+```
+
+Each execution generates a timestamped log file.
+
+---
+
+## 🛠 Technologies Used
+
+- Python
+- Scapy
+- Colorama
+- Tabulate
+- ThreadPoolExecutor
+- IEEE OUI Database
 
 ---
 
 ## 📸 Screenshots
 
-Create a folder named **screenshots** and add images such as:
+Place screenshots inside:
 
-- Banner
-- Progress Bar
-- Device Table
-- CSV Report
-- JSON Report
+```
+screenshots/
+```
 
 Example:
 
 ```
 screenshots/
 ├── banner.png
-├── progress.png
-├── results.png
-└── reports.png
+├── scanning.png
+├── output.png
+├── csv_report.png
+```
+
+Then include them like:
+
+```markdown
+## Application
+
+![Banner](screenshots/banner.png)
+
+![Scan](screenshots/scanning.png)
+
+![Output](screenshots/output.png)
 ```
 
 ---
 
-## 🗺 Roadmap
+## 🚀 Future Improvements
 
-### ✅ Version 1
-- ARP Scanner
-
-### ✅ Version 2
-- Hostname Resolution
-
-### ✅ Version 3
-- Vendor Lookup
-
-### ✅ Version 4
-- CSV Export
-
-### ✅ Version 5
-- JSON Reports & Logging
-
-### ✅ Version 6
-- Multithreading
-- Modular Project Structure
-- Progress Bar
-
-### 🔜 Version 7
-- Gateway Detection
-- Network Statistics
-- Device History
-
-### 🔜 Version 8
-- Security Audit
-
-### 🔜 Version 9
-- GUI Application
-
-### 🔜 Version 10
-- Professional Edition
-
----
-
-## 🤝 Contributing
-
-Contributions, suggestions, and improvements are welcome.
-
-Feel free to fork the repository and submit a pull request.
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License.
+- Port Scanner
+- OS Detection
+- Ping Sweep
+- Service Detection
+- HTML Reports
+- Excel Export
+- GUI Version
+- Interface Selection
+- IPv6 Support
 
 ---
 
@@ -214,4 +199,20 @@ This project is licensed under the MIT License.
 
 **Vikalp Pandey**
 
-GitHub: https://github.com/Vikalp1693
+MCA Graduate
+
+Cybersecurity Enthusiast
+
+Python Developer
+
+Networking Learner
+
+GitHub:
+https://github.com/YOUR_USERNAME
+
+LinkedIn:
+https://linkedin.com/in/YOUR_PROFILE
+
+---
+
+## ⭐ If you found this project useful, consider giving it a star.

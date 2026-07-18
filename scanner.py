@@ -1,40 +1,38 @@
 """
 scanner.py
-Main entry point for Python Network Scanner Professional v6.0
+
+Main entry point for Python-Network-Scanner.
+
+Author : Vikalp Pandey
+Version : 6.1
 """
 
+from __future__ import annotations
+
 import argparse
-from colorama import Fore, init
+import sys
 
-from config import (
-    DEFAULT_THREADS,
-    MAX_THREADS
-)
+from colorama import init
+from tabulate import tabulate
 
+from banner import print_banner
+from config import DEFAULT_THREADS
+from logger import setup_logger
+from progress import finish_progress, start_progress
+from report import save_csv, save_json
+from scanner_core import NetworkScanner
 from utils import validate_network
-from scanner_core import scan_network
-
-# -------------------------------------------------------
-# Initialize Colorama
-# -------------------------------------------------------
-
-init(autoreset=True)
 
 
-# -------------------------------------------------------
-# Main Function
-# -------------------------------------------------------
+def parse_arguments():
+    """
+    Parse command-line arguments.
+    """
 
-def main():
-
-    parser = argparse.ArgumentParser(
-        description="Python Network Scanner Professional v6.0"
-    )
+    parser = argparse.ArgumentParser(description="Python Network Scanner")
 
     parser.add_argument(
-        "-n",
-        "--network",
-        help="Target Network (Example: 192.168.1.0/24)"
+        "-n", "--network", help="Target network (Example: 192.168.1.0/24)"
     )
 
     parser.add_argument(
@@ -42,84 +40,96 @@ def main():
         "--threads",
         type=int,
         default=DEFAULT_THREADS,
-        help=f"Worker Threads (1-{MAX_THREADS})"
+        help="Number of worker threads",
     )
 
-    args = parser.parse_args()
+    return parser.parse_args()
 
-    # ---------------------------------------------------
-    # Get Network
-    # ---------------------------------------------------
 
-    if args.network:
+def print_results(devices):
+    """
+    Display scan results in table format.
+    """
 
-        network = args.network
+    table = []
 
-    else:
+    for device in devices:
 
-        network = input(
-            "Enter Target Network (Example: 192.168.1.0/24): "
+        table.append(
+            [
+                device["ip"],
+                device["mac"],
+                device["vendor"],
+                device["hostname"],
+            ]
         )
 
-    # ---------------------------------------------------
-    # Validate Threads
-    # ---------------------------------------------------
+    print()
 
-    if args.threads < 1:
-
-        print(Fore.RED + "Thread count must be at least 1.")
-        return
-
-    if args.threads > MAX_THREADS:
-
-        print(
-            Fore.RED +
-            f"Maximum allowed threads: {MAX_THREADS}"
+    print(
+        tabulate(
+            table,
+            headers=[
+                "IP Address",
+                "MAC Address",
+                "Vendor",
+                "Hostname",
+            ],
+            tablefmt="grid",
         )
-        return
-
-    # ---------------------------------------------------
-    # Validate Network
-    # ---------------------------------------------------
-
-    try:
-
-        validate_network(network)
-
-    except ValueError:
-
-        print(Fore.RED + "Invalid network address.")
-        return
-
-    # ---------------------------------------------------
-    # Start Scanner
-    # ---------------------------------------------------
-
-    try:
-
-        scan_network(
-            network,
-            args.threads
-        )
-
-    except KeyboardInterrupt:
-
-        print(
-            Fore.RED +
-            "\n\nScan cancelled by user."
-        )
-
-    except Exception as e:
-
-        print(
-            Fore.RED +
-            f"\nUnexpected Error: {e}"
-        )
+    )
 
 
-# -------------------------------------------------------
-# Program Entry
-# -------------------------------------------------------
+def main():
+
+    init(autoreset=True)
+
+    logger = setup_logger()
+
+    args = parse_arguments()
+
+    network = args.network
+
+    if not network:
+        network = input("Enter Network (Example 192.168.1.0/24): ")
+
+    if not validate_network(network):
+
+        logger.error("Invalid network entered.")
+
+        print("\nInvalid network.")
+
+        sys.exit(1)
+
+    print_banner(args.threads)
+
+    logger.info(f"Scan Started for {network}")
+
+    scanner = NetworkScanner(threads=args.threads)
+
+    print("Scanning network...\n")
+
+    devices = scanner.scan(network)
+
+    start_progress(len(devices))
+
+    finish_progress()
+
+    print_results(devices)
+
+    csv_file = save_csv(devices)
+
+    json_file = save_json(devices)
+
+    logger.info(f"Devices Found : {len(devices)}")
+    logger.info(f"CSV Saved : {csv_file}")
+    logger.info(f"JSON Saved : {json_file}")
+    logger.info("Scan Completed")
+
+    print(f"\nDevices Found : {len(devices)}")
+    print(f"CSV Report    : {csv_file}")
+    print(f"JSON Report   : {json_file}")
+
 
 if __name__ == "__main__":
     main()

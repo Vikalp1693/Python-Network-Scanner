@@ -1,22 +1,37 @@
-# Virtual Environment
-venv/
-
-# Python Cache
+# Python
 __pycache__/
 *.py[cod]
+*.pyo
 
-# Logs
-logs/
+# Virtual Environment
+venv/
+.env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
 
 # Reports
-reports/
+reports/*.csv
+reports/*.json
 
-# Generated Output
-output.csv
+# Logs
+logs/*.log
 
-# VS Code
-.vscode/
+# Screenshots (keep folder, ignore images)
+screenshots/*.png
+screenshots/*.jpg
+screenshots/*.jpeg
 
-# OS Files
-.DS_Store
-Thumbs.db
+# Python build
+build/
+dist/
+*.egg-info/
+
+# Misc
+*.tmp

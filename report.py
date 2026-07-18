@@ -1,107 +1,85 @@
 """
 report.py
-Handles report generation for Python Network Scanner Professional.
+
+Generate CSV and JSON reports for Python-Network-Scanner.
+
+Author : Vikalp Pandey
+Project: Python-Network-Scanner v6.1
 """
+
+from __future__ import annotations
 
 import csv
 import json
-import os
 from datetime import datetime
 
 from config import (
-    REPORT_FOLDER,
+    REPORTS_DIR,
     CSV_PREFIX,
-    JSON_PREFIX
+    JSON_PREFIX,
 )
 
-# -------------------------------------------------------
-# Create Reports Folder
-# -------------------------------------------------------
 
-os.makedirs(REPORT_FOLDER, exist_ok=True)
-
-
-def get_report_filenames():
+def _timestamp() -> str:
     """
-    Generate timestamped report filenames.
+    Return current timestamp for filenames.
     """
-
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-
-    csv_file = os.path.join(
-        REPORT_FOLDER,
-        f"{CSV_PREFIX}_{timestamp}.csv"
-    )
-
-    json_file = os.path.join(
-        REPORT_FOLDER,
-        f"{JSON_PREFIX}_{timestamp}.json"
-    )
-
-    return csv_file, json_file
+    return datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
 
-def save_csv(devices):
+def save_csv(devices: list[dict]) -> str:
     """
     Save scan results to CSV.
+
+    Returns:
+        Path of generated CSV file.
     """
 
-    csv_file, _ = get_report_filenames()
+    filename = REPORTS_DIR / f"{CSV_PREFIX}_{_timestamp()}.csv"
 
-    with open(csv_file, "w", newline="", encoding="utf-8") as file:
+    headers = [
+        "IP Address",
+        "MAC Address",
+        "Vendor",
+        "Hostname",
+    ]
 
-        writer = csv.writer(file)
+    with open(filename, mode="w", newline="", encoding="utf-8") as csv_file:
 
-        writer.writerow([
-            "IP Address",
-            "MAC Address",
-            "Vendor",
-            "Hostname"
-        ])
+        writer = csv.writer(csv_file)
 
-        writer.writerows(devices)
+        writer.writerow(headers)
 
-    return csv_file
+        for device in devices:
+            writer.writerow(
+                [
+                    device.get("ip", ""),
+                    device.get("mac", ""),
+                    device.get("vendor", ""),
+                    device.get("hostname", ""),
+                ]
+            )
+
+    return str(filename)
 
 
-def save_json(devices):
+def save_json(devices: list[dict]) -> str:
     """
     Save scan results to JSON.
+
+    Returns:
+        Path of generated JSON file.
     """
 
-    _, json_file = get_report_filenames()
+    filename = REPORTS_DIR / f"{JSON_PREFIX}_{_timestamp()}.json"
 
-    data = []
-
-    for device in devices:
-
-        data.append({
-
-            "IP Address": device[0],
-            "MAC Address": device[1],
-            "Vendor": device[2],
-            "Hostname": device[3]
-
-        })
-
-    with open(json_file, "w", encoding="utf-8") as file:
+    with open(filename, mode="w", encoding="utf-8") as json_file:
 
         json.dump(
-            data,
-            file,
-            indent=4
+            devices,
+            json_file,
+            indent=4,
+            ensure_ascii=False,
         )
 
-    return json_file
-
-
-def save_reports(devices):
-    """
-    Save both CSV and JSON reports.
-    """
-
-    csv_file = save_csv(devices)
-
-    json_file = save_json(devices)
-
-    return csv_file, json_file
+    return str(filename)

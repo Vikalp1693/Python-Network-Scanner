@@ -1,44 +1,73 @@
 """
 config.py
-Application configuration for Python Network Scanner Professional
+
+Central configuration file for Python-Network-Scanner.
+
+All application-wide constants are defined here to make the
+project easier to maintain and configure.
 """
 
-# -------------------------------------------------------
-# Application Information
-# -------------------------------------------------------
+from pathlib import Path
 
-APP_NAME = "Python Network Scanner Professional"
-VERSION = "6.0"
+# ==========================================================
+# Application Information
+# ==========================================================
+
+APP_NAME = "Python-Network-Scanner"
+APP_VERSION = "6.1.0"
 AUTHOR = "Vikalp Pandey"
 
-# -------------------------------------------------------
-# Scanner Configuration
-# -------------------------------------------------------
+# ==========================================================
+# Network Scanner
+# ==========================================================
 
+DEFAULT_TIMEOUT = 2
 DEFAULT_THREADS = 10
 MAX_THREADS = 100
-SCAN_TIMEOUT = 2
 
-# -------------------------------------------------------
-# Report Configuration
-# -------------------------------------------------------
+# ==========================================================
+# Paths
+# ==========================================================
 
-REPORT_FOLDER = "reports"
-LOG_FOLDER = "logs"
+BASE_DIR = Path(__file__).resolve().parent
+
+REPORTS_DIR = BASE_DIR / "reports"
+LOGS_DIR = BASE_DIR / "logs"
+DATA_DIR = BASE_DIR / "data"
+SCREENSHOTS_DIR = BASE_DIR / "screenshots"
+
+# IEEE OUI Database
+
+OUI_DATABASE = DATA_DIR / "oui.csv"
+
+# ==========================================================
+# Report File Names
+# ==========================================================
 
 CSV_PREFIX = "scan"
+
 JSON_PREFIX = "scan"
 
-# -------------------------------------------------------
-# Display Configuration
-# -------------------------------------------------------
+LOG_PREFIX = "scanner"
+
+# ==========================================================
+# Output
+# ==========================================================
 
 TABLE_FORMAT = "grid"
 
-BANNER_WIDTH = 100
+PROGRESS_BAR_WIDTH = 40
 
-# -------------------------------------------------------
-# Progress Bar
-# -------------------------------------------------------
+SEPARATOR = "=" * 80
 
-PROGRESS_BAR_LENGTH = 30
+# ==========================================================
+# Create Required Directories
+# ==========================================================
+
+for directory in (
+    REPORTS_DIR,
+    LOGS_DIR,
+    DATA_DIR,
+    SCREENSHOTS_DIR,
+):
+    directory.mkdir(parents=True, exist_ok=True)

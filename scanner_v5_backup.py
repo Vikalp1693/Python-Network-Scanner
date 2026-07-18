@@ -41,6 +41,7 @@ logging.basicConfig(
 # Helper Functions
 # -------------------------------------------------------
 
+
 def get_hostname(ip):
     """
     Returns hostname for a given IP.
@@ -113,16 +114,16 @@ def print_banner():
 
     print(Fore.CYAN + "=" * 100)
 
-    print(
-        Fore.GREEN
-        + "                  Python Network Scanner v5.0"
-    )
+    print(Fore.GREEN + "                  Python Network Scanner v5.0")
 
     print(Fore.CYAN + "=" * 100)
 
     # -------------------------------------------------------
+
+
 # Main Network Scan Function
 # -------------------------------------------------------
+
 
 def scan_network(network):
 
@@ -141,11 +142,7 @@ def scan_network(network):
 
     packet = ether / arp
 
-    result = srp(
-        packet,
-        timeout=2,
-        verbose=False
-    )[0]
+    result = srp(packet, timeout=2, verbose=False)[0]
 
     devices = []
 
@@ -157,28 +154,18 @@ def scan_network(network):
         hostname = get_hostname(ip)
         vendor = get_vendor(mac)
 
-        devices.append([
-            ip,
-            mac,
-            vendor,
-            hostname
-        ])
+        devices.append([ip, mac, vendor, hostname])
 
     end_time = time.time()
 
     devices.sort(key=lambda x: list(map(int, x[0].split("."))))
 
     print(
-        Fore.CYAN +
-        tabulate(
+        Fore.CYAN
+        + tabulate(
             devices,
-            headers=[
-                "IP Address",
-                "MAC Address",
-                "Vendor",
-                "Hostname"
-            ],
-            tablefmt="grid"
+            headers=["IP Address", "MAC Address", "Vendor", "Hostname"],
+            tablefmt="grid",
         )
     )
 
@@ -188,15 +175,9 @@ def scan_network(network):
 
     json_file = f"reports/scan_{timestamp}.json"
 
-    save_csv(
-        devices,
-        csv_file
-    )
+    save_csv(devices, csv_file)
 
-    save_json(
-        devices,
-        json_file
-    )
+    save_json(devices, json_file)
 
     logging.info(f"Devices Found : {len(devices)}")
 
@@ -208,44 +189,28 @@ def scan_network(network):
 
     print()
 
-    print(
-        Fore.GREEN +
-        f"Devices Found : {len(devices)}"
-    )
+    print(Fore.GREEN + f"Devices Found : {len(devices)}")
 
-    print(
-        Fore.GREEN +
-        f"Time Taken    : {end_time-start_time:.2f} seconds"
-    )
+    print(Fore.GREEN + f"Time Taken    : {end_time-start_time:.2f} seconds")
 
-    print(
-        Fore.BLUE +
-        f"CSV Report    : {csv_file}"
-    )
+    print(Fore.BLUE + f"CSV Report    : {csv_file}")
 
-    print(
-        Fore.BLUE +
-        f"JSON Report   : {json_file}"
-    )
+    print(Fore.BLUE + f"JSON Report   : {json_file}")
 
-    print(
-        Fore.CYAN +
-        "=" * 100
-    )
+    print(Fore.CYAN + "=" * 100)
     # -------------------------------------------------------
+
+
 # Main Function
 # -------------------------------------------------------
 
+
 def main():
 
-    parser = argparse.ArgumentParser(
-        description="Python Network Scanner v5.0"
-    )
+    parser = argparse.ArgumentParser(description="Python Network Scanner v5.0")
 
     parser.add_argument(
-        "-n",
-        "--network",
-        help="Target network (Example: 192.168.1.0/24)"
+        "-n", "--network", help="Target network (Example: 192.168.1.0/24)"
     )
 
     args = parser.parse_args()
@@ -253,9 +218,7 @@ def main():
     if args.network:
         network = args.network
     else:
-        network = input(
-            "Enter network (Example: 192.168.1.0/24): "
-        )
+        network = input("Enter network (Example: 192.168.1.0/24): ")
 
     try:
 
@@ -266,28 +229,19 @@ def main():
 
     except ValueError:
 
-        print(
-            Fore.RED +
-            "\nInvalid network address!"
-        )
+        print(Fore.RED + "\nInvalid network address!")
 
         logging.error("Invalid network entered.")
 
     except KeyboardInterrupt:
 
-        print(
-            Fore.RED +
-            "\nScan cancelled by user."
-        )
+        print(Fore.RED + "\nScan cancelled by user.")
 
         logging.warning("Scan cancelled by user.")
 
     except Exception as e:
 
-        print(
-            Fore.RED +
-            f"\nUnexpected Error : {e}"
-        )
+        print(Fore.RED + f"\nUnexpected Error : {e}")
 
         logging.exception(str(e))
 

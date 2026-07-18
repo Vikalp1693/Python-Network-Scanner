@@ -1,64 +1,90 @@
 """
 progress.py
-Professional progress bar for Python Network Scanner Professional.
+
+Thread-safe progress bar for Python-Network-Scanner.
 """
 
 import threading
-from colorama import Fore
+import time
 
-from config import PROGRESS_BAR_LENGTH
+from colorama import Fore, Style
 
-# -------------------------------------------------------
-# Thread Safe Variables
-# -------------------------------------------------------
+from config import PROGRESS_BAR_WIDTH
 
-progress_lock = threading.Lock()
+# ==========================================================
+# Global Progress State
+# ==========================================================
 
-current_progress = 0
+_lock = threading.Lock()
+
+_current = 0
+_total = 0
+_start_time = 0.0
 
 
-def reset_progress():
+# ==========================================================
+# Initialize Progress
+# ==========================================================
+
+
+def start_progress(total: int) -> None:
     """
-    Reset progress before every scan.
+    Initialize the progress bar.
+
+    Args:
+        total: Total number of tasks.
     """
 
-    global current_progress
+    global _current, _total, _start_time
 
-    current_progress = 0
+    _current = 0
+    _total = total
+    _start_time = time.perf_counter()
 
 
-def update_progress(total):
+# ==========================================================
+# Update Progress
+# ==========================================================
+
+
+def update_progress() -> None:
     """
-    Update progress bar safely.
+    Increment and display the progress bar.
     """
 
-    global current_progress
+    global _current
 
-    with progress_lock:
+    with _lock:
 
-        current_progress += 1
+        _current += 1
 
-        percent = current_progress / total
+        percentage = _current / _total if _total else 1
 
-        filled = int(PROGRESS_BAR_LENGTH * percent)
+        filled = int(PROGRESS_BAR_WIDTH * percentage)
 
-        bar = (
-            "█" * filled +
-            "░" * (PROGRESS_BAR_LENGTH - filled)
-        )
+        bar = "█" * filled + "░" * (PROGRESS_BAR_WIDTH - filled)
+
+        elapsed = time.perf_counter() - _start_time
 
         print(
-            Fore.YELLOW +
-            f"\r[{bar}] {percent*100:6.2f}% "
-            f"({current_progress}/{total})",
+            f"\r{Fore.CYAN}"
+            f"[{bar}] "
+            f"{percentage * 100:6.2f}% "
+            f"({_current}/{_total}) "
+            f"Elapsed: {elapsed:5.2f}s",
             end="",
-            flush=True
+            flush=True,
         )
 
 
-def finish_progress():
+# ==========================================================
+# Finish Progress
+# ==========================================================
+
+
+def finish_progress() -> None:
     """
-    Move cursor to next line after progress completes.
+    Finish the progress bar.
     """
 
-    print()
+    print(Style.RESET_ALL)

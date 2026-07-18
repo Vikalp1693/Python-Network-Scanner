@@ -1,122 +1,111 @@
 """
 utils.py
-Utility functions for Python Network Scanner Professional.
+
+Reusable helper functions for Python-Network-Scanner.
+
+Author : Vikalp Pandey
+Project: Python-Network-Scanner v6.1
 """
+
+from __future__ import annotations
 
 import ipaddress
 import socket
 
-from mac_vendor_lookup import MacLookup
 
-# -------------------------------------------------------
-# Initialize Vendor Lookup
-# -------------------------------------------------------
-
-vendor_lookup = MacLookup()
-
-# -------------------------------------------------------
-# Hostname Lookup
-# -------------------------------------------------------
-
-def get_hostname(ip):
+def validate_network(network: str) -> bool:
     """
-    Returns the hostname of an IP address.
+    Validate CIDR network.
+
+    Example:
+        192.168.1.0/24
     """
 
     try:
-        return socket.gethostbyaddr(ip)[0]
+        ipaddress.ip_network(network, strict=False)
+        return True
 
-    except Exception:
+    except ValueError:
+        return False
+
+
+def normalize_mac(mac: str) -> str:
+    """
+    Convert MAC address to uppercase format.
+
+    Example:
+        aa:bb:cc:11:22:33
+            ↓
+        AA:BB:CC:11:22:33
+    """
+
+    if not mac:
         return "Unknown"
 
+    return mac.upper()
 
-# -------------------------------------------------------
-# Vendor Lookup
-# -------------------------------------------------------
 
-def get_vendor(mac):
+def resolve_hostname(ip: str) -> str:
     """
-    Returns the vendor name from a MAC address.
+    Resolve hostname from IP address.
     """
 
     try:
-        return vendor_lookup.lookup(mac)
+        hostname = socket.gethostbyaddr(ip)[0]
 
-    except Exception:
-        return "Unknown"
+        if hostname.strip():
+            return hostname
+
+    except (
+        socket.herror,
+        socket.gaierror,
+        TimeoutError,
+        OSError,
+    ):
+        pass
+
+    return "Unknown"
 
 
-# -------------------------------------------------------
-# Validate Network
-# -------------------------------------------------------
-
-def validate_network(network):
+def sort_devices(devices: list[dict]) -> list[dict]:
     """
-    Validate network address.
-
-    Raises:
-        ValueError if invalid.
-    """
-
-    return ipaddress.ip_network(
-        network,
-        strict=False
-    )
-
-
-# -------------------------------------------------------
-# Sort Devices
-# -------------------------------------------------------
-
-def sort_devices(devices):
-    """
-    Sort devices by IP Address.
+    Sort devices by IP address.
     """
 
-    return sorted(
-        devices,
-        key=lambda x: list(
-            map(
-                int,
-                x[0].split(".")
-            )
-        )
-    )
+    return sorted(devices, key=lambda device: ipaddress.ip_address(device["ip"]))
 
 
-# -------------------------------------------------------
-# Device Statistics
-# -------------------------------------------------------
-
-def calculate_statistics(devices):
+def unique_devices(devices: list[dict]) -> list[dict]:
     """
-    Calculate scan statistics.
+    Remove duplicate devices based on IP.
     """
 
-    stats = {
+    seen = set()
 
-        "devices": len(devices),
-
-        "known_vendors": 0,
-        "unknown_vendors": 0,
-
-        "known_hostnames": 0,
-        "unknown_hostnames": 0
-    }
+    result = []
 
     for device in devices:
 
-        vendor = device[2]
-        hostname = device[3]
+        ip = device["ip"]
 
-        if vendor == "Unknown":
-            stats["unknown_vendors"] += 1
-        else:
-            stats["known_vendors"] += 1
+        if ip not in seen:
+            seen.add(ip)
+            result.append(device)
 
-        if hostname == "Unknown":
-            stats["unknown_hostnames"] += 1
-        else:
-            stats["known_hostnames"] += 1
+    return result
 
-    return stats
+
+def safe_string(value: str | None) -> str:
+    """
+    Convert None or empty values into 'Unknown'.
+    """
+
+    if value is None:
+        return "Unknown"
+
+    value = str(value).strip()
+
+    if not value:
+        return "Unknown"
+
+    return value

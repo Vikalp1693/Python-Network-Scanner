@@ -1,184 +1,113 @@
 """
 scanner_core.py
-Core scanning logic for Python Network Scanner Professional.
+
+Core scanning engine for Python-Network-Scanner.
+
+Author : Vikalp Pandey
+Project: Python-Network-Scanner v6.1
 """
 
-import time
+from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import ipaddress
+from concurrent.futures import ThreadPoolExecutor
 
-from colorama import Fore
 from scapy.all import ARP, Ether, srp
-from tabulate import tabulate
 
-from banner import print_banner
-from config import (
-    DEFAULT_THREADS,
-    SCAN_TIMEOUT,
-    TABLE_FORMAT
-)
-from logger import setup_logger
-from progress import (
-    reset_progress,
-    update_progress,
-    finish_progress
-)
-from report import save_reports
+from config import DEFAULT_TIMEOUT, DEFAULT_THREADS
+from progress import update_progress
 from utils import (
-    calculate_statistics,
-    get_hostname,
-    get_vendor,
-    sort_devices
+    normalize_mac,
+    resolve_hostname,
+    safe_string,
+    sort_devices,
+    unique_devices,
 )
+from vendor_lookup import VendorLookup
 
-logger = setup_logger()
 
-
-# -------------------------------------------------------
-# Process One Device
-# -------------------------------------------------------
-
-def process_device(received, total):
+class NetworkScanner:
     """
-    Process a single discovered device.
+    Core network scanner.
     """
 
-    ip = received.psrc
-    mac = received.hwsrc
+    def __init__(
+        self,
+        timeout: int = DEFAULT_TIMEOUT,
+        threads: int = DEFAULT_THREADS,
+    ) -> None:
 
-    hostname = get_hostname(ip)
-    vendor = get_vendor(mac)
+        self.timeout = timeout
+        self.threads = threads
 
-    update_progress(total)
+        self.vendor_lookup = VendorLookup()
 
-    return [
-        ip,
-        mac,
-        vendor,
-        hostname
-    ]
+    def _scan_network(self, network: str):
+        """
+        Perform ARP scan.
+        """
 
+        packet = Ether(dst="ff:ff:ff:ff:ff:ff") / ARP(pdst=network)
 
-# -------------------------------------------------------
-# Scan Network
-# -------------------------------------------------------
+        answered, _ = srp(
+            packet,
+            timeout=self.timeout,
+            verbose=False,
+        )
 
-def scan_network(network, threads=DEFAULT_THREADS):
-    """
-    Scan the target network.
-    """
+        return answered
 
-    logger.info(f"Scan Started : {network}")
+    def _process_device(self, response):
+        """
+        Process one discovered device.
+        """
 
-    print_banner(threads)
+        ip = response.psrc
 
-    print(Fore.YELLOW + f"\nTarget Network : {network}")
-    print(Fore.YELLOW + "Scanning...\n")
+        mac = normalize_mac(response.hwsrc)
 
-    start_time = time.time()
+        vendor = self.vendor_lookup.get_vendor(mac)
 
-    arp = ARP(pdst=network)
-    ether = Ether(dst="ff:ff:ff:ff:ff:ff")
+        hostname = resolve_hostname(ip)
 
-    packet = ether / arp
+        update_progress()
 
-    answered = srp(
-        packet,
-        timeout=SCAN_TIMEOUT,
-        verbose=False
-    )[0]
+        return {
+            "ip": ip,
+            "mac": mac,
+            "vendor": safe_string(vendor),
+            "hostname": safe_string(hostname),
+        }
 
-    if len(answered) == 0:
+    def scan(self, network: str):
+        """
+        Scan an IPv4 network.
+        """
 
-        print(Fore.RED + "No active devices found.")
+        ipaddress.ip_network(
+            network,
+            strict=False,
+        )
 
-        logger.warning("No devices found.")
+        answered = self._scan_network(network)
 
-        return
+        devices = []
 
-    reset_progress()
+        with ThreadPoolExecutor(max_workers=self.threads) as executor:
 
-    devices = []
-
-    with ThreadPoolExecutor(max_workers=threads) as executor:
-
-        futures = [
-
-            executor.submit(
-                process_device,
-                received,
-                len(answered)
-            )
-
-            for _, received in answered
-
-        ]
-
-        for future in as_completed(futures):
-
-            try:
-
-                devices.append(
-                    future.result()
+            futures = [
+                executor.submit(
+                    self._process_device,
+                    received,
                 )
+                for _, received in answered
+            ]
 
-            except Exception as e:
+            for future in futures:
+                devices.append(future.result())
 
-                logger.exception(e)
+        devices = unique_devices(devices)
 
-    finish_progress()
+        devices = sort_devices(devices)
 
-    devices = sort_devices(devices)
-
-    print()
-
-    print(
-        Fore.CYAN +
-        tabulate(
-            devices,
-            headers=[
-                "IP Address",
-                "MAC Address",
-                "Vendor",
-                "Hostname"
-            ],
-            tablefmt=TABLE_FORMAT
-        )
-    )
-
-    csv_file, json_file = save_reports(devices)
-
-    stats = calculate_statistics(devices)
-
-    end_time = time.time()
-
-    duration = end_time - start_time
-
-    print()
-
-    print(Fore.GREEN + "=" * 60)
-    print(Fore.GREEN + "SCAN SUMMARY")
-    print(Fore.GREEN + "=" * 60)
-
-    print(f"Devices Found      : {stats['devices']}")
-    print(f"Known Vendors     : {stats['known_vendors']}")
-    print(f"Unknown Vendors   : {stats['unknown_vendors']}")
-    print(f"Known Hostnames   : {stats['known_hostnames']}")
-    print(f"Unknown Hostnames : {stats['unknown_hostnames']}")
-    print(f"Threads Used      : {threads}")
-    print(f"Time Taken        : {duration:.2f} sec")
-
-    if duration > 0:
-
-        print(
-            f"Speed             : "
-            f"{stats['devices']/duration:.2f} devices/sec"
-        )
-
-    print()
-
-    print(Fore.BLUE + f"CSV Report  : {csv_file}")
-    print(Fore.BLUE + f"JSON Report : {json_file}")
-
-    logger.info(f"Devices Found : {stats['devices']}")
-    logger.info("Scan Completed")
+        return devices

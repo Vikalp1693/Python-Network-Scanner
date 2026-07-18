@@ -1,35 +1,24 @@
 from scapy.all import ARP, Ether, srp
 from mac_vendor_lookup import MacLookup
-from colorama import Fore, Style, init
+from colorama import Fore, init
 from tabulate import tabulate
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import ipaddress
-import csv
-import socket
-import time
 import argparse
+import csv
+import ipaddress
 import json
 import logging
 import os
-
+import socket
+import threading
+import time
 from datetime import datetime
-
-# -------------------------------------------------------
-# Initialize Colorama
-# -------------------------------------------------------
 
 init(autoreset=True)
 
-# -------------------------------------------------------
-# Create Required Folders
-# -------------------------------------------------------
-
 os.makedirs("reports", exist_ok=True)
 os.makedirs("logs", exist_ok=True)
-
-# -------------------------------------------------------
-# Logging Configuration
-# -------------------------------------------------------
 
 logging.basicConfig(
     filename="logs/scanner.log",
@@ -37,265 +26,84 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(message)s",
 )
 
-# -------------------------------------------------------
-# Helper Functions
-# -------------------------------------------------------
-
-def get_hostname(ip):
-    """
-    Returns hostname for a given IP.
-    """
-
-    try:
-        return socket.gethostbyaddr(ip)[0]
-
-    except Exception:
-        return "Unknown"
-
-
-def get_vendor(mac):
-    """
-    Returns vendor using MAC Address.
-    """
-
-    try:
-        return MacLookup().lookup(mac)
-
-    except Exception:
-        return "Unknown"
-
-
-def save_csv(devices, filename):
-    """
-    Save scan results as CSV.
-    """
-
-    with open(filename, "w", newline="", encoding="utf-8") as file:
-
-        writer = csv.writer(file)
-
-        writer.writerow(
-            [
-                "IP Address",
-                "MAC Address",
-                "Vendor",
-                "Hostname",
-            ]
-        )
-
-        writer.writerows(devices)
-
-
-def save_json(devices, filename):
-    """
-    Save scan results as JSON.
-    """
-
-    data = []
-
-    for device in devices:
-
-        data.append(
-            {
-                "IP Address": device[0],
-                "MAC Address": device[1],
-                "Vendor": device[2],
-                "Hostname": device[3],
-            }
-        )
-
-    with open(filename, "w", encoding="utf-8") as file:
-
-        json.dump(data, file, indent=4)
-
+vendor_lookup = MacLookup()
+progress_lock = threading.Lock()
+processed = 0
 
 def print_banner():
-
+    print(Fore.CYAN + "=" * 100)
+    print(Fore.GREEN + "Python Network Scanner v6.0")
     print(Fore.CYAN + "=" * 100)
 
-    print(
-        Fore.GREEN
-        + "                  Python Network Scanner v5.0"
-    )
+def get_hostname(ip):
+    try:
+        return socket.gethostbyaddr(ip)[0]
+    except Exception:
+        return "Unknown"
 
-    print(Fore.CYAN + "=" * 100)
+def get_vendor(mac):
+    try:
+        return vendor_lookup.lookup(mac)
+    except Exception:
+        return "Unknown"
 
-    # -------------------------------------------------------
-# Main Network Scan Function
-# -------------------------------------------------------
+def save_csv(rows, filename):
+    with open(filename, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["IP Address","MAC Address","Vendor","Hostname"])
+        w.writerows(rows)
 
-def scan_network(network):
+def save_json(rows, filename):
+    data=[{"IP Address":r[0],"MAC Address":r[1],"Vendor":r[2],"Hostname":r[3]} for r in rows]
+    with open(filename,"w",encoding="utf-8") as f:
+        json.dump(data,f,indent=4)
 
-    logging.info(f"Scan Started for {network}")
+def process_device(received,total):
+    global processed
+    ip=received.psrc
+    mac=received.hwsrc
+    host=get_hostname(ip)
+    vendor=get_vendor(mac)
+    with progress_lock:
+        processed+=1
+        print(f"\rProcessing {processed}/{total}",end="",flush=True)
+    return [ip,mac,vendor,host]
 
+def scan_network(network,threads):
+    global processed
+    processed=0
     print_banner()
-
-    print(Fore.YELLOW + f"\nTarget Network : {network}")
-    print(Fore.YELLOW + "Scanning network...")
-    print(Fore.YELLOW + "Please wait...\n")
-
-    start_time = time.time()
-
-    arp = ARP(pdst=network)
-    ether = Ether(dst="ff:ff:ff:ff:ff:ff")
-
-    packet = ether / arp
-
-    result = srp(
-        packet,
-        timeout=2,
-        verbose=False
-    )[0]
-
-    devices = []
-
-    for _, received in result:
-
-        ip = received.psrc
-        mac = received.hwsrc
-
-        hostname = get_hostname(ip)
-        vendor = get_vendor(mac)
-
-        devices.append([
-            ip,
-            mac,
-            vendor,
-            hostname
-        ])
-
-    end_time = time.time()
-
-    devices.sort(key=lambda x: list(map(int, x[0].split("."))))
-
-    print(
-        Fore.CYAN +
-        tabulate(
-            devices,
-            headers=[
-                "IP Address",
-                "MAC Address",
-                "Vendor",
-                "Hostname"
-            ],
-            tablefmt="grid"
-        )
-    )
-
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-
-    csv_file = f"reports/scan_{timestamp}.csv"
-
-    json_file = f"reports/scan_{timestamp}.json"
-
-    save_csv(
-        devices,
-        csv_file
-    )
-
-    save_json(
-        devices,
-        json_file
-    )
-
-    logging.info(f"Devices Found : {len(devices)}")
-
-    logging.info(f"CSV Saved : {csv_file}")
-
-    logging.info(f"JSON Saved : {json_file}")
-
-    logging.info("Scan Completed")
-
+    start=time.time()
+    packet=Ether(dst="ff:ff:ff:ff:ff:ff")/ARP(pdst=network)
+    answered=srp(packet,timeout=2,verbose=False)[0]
+    devices=[]
+    with ThreadPoolExecutor(max_workers=threads) as ex:
+        futures=[ex.submit(process_device,r,len(answered)) for _,r in answered]
+        for f in as_completed(futures):
+            devices.append(f.result())
     print()
-
-    print(
-        Fore.GREEN +
-        f"Devices Found : {len(devices)}"
-    )
-
-    print(
-        Fore.GREEN +
-        f"Time Taken    : {end_time-start_time:.2f} seconds"
-    )
-
-    print(
-        Fore.BLUE +
-        f"CSV Report    : {csv_file}"
-    )
-
-    print(
-        Fore.BLUE +
-        f"JSON Report   : {json_file}"
-    )
-
-    print(
-        Fore.CYAN +
-        "=" * 100
-    )
-    # -------------------------------------------------------
-# Main Function
-# -------------------------------------------------------
+    devices.sort(key=lambda x:list(map(int,x[0].split("."))))
+    print(tabulate(devices,headers=["IP Address","MAC Address","Vendor","Hostname"],tablefmt="grid"))
+    ts=datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    csvf=f"reports/scan_{ts}.csv"
+    jsonf=f"reports/scan_{ts}.json"
+    save_csv(devices,csvf)
+    save_json(devices,jsonf)
+    elapsed=time.time()-start
+    print(f"\nDevices: {len(devices)}")
+    print(f"Time: {elapsed:.2f}s")
+    print(f"Threads: {threads}")
+    print(f"CSV: {csvf}")
+    print(f"JSON: {jsonf}")
 
 def main():
+    p=argparse.ArgumentParser(description="Python Network Scanner v6.0")
+    p.add_argument("-n","--network")
+    p.add_argument("-t","--threads",type=int,default=10)
+    a=p.parse_args()
+    network=a.network or input("Enter network (Example: 192.168.1.0/24): ")
+    ipaddress.ip_network(network,strict=False)
+    scan_network(network,a.threads)
 
-    parser = argparse.ArgumentParser(
-        description="Python Network Scanner v5.0"
-    )
-
-    parser.add_argument(
-        "-n",
-        "--network",
-        help="Target network (Example: 192.168.1.0/24)"
-    )
-
-    args = parser.parse_args()
-
-    if args.network:
-        network = args.network
-    else:
-        network = input(
-            "Enter network (Example: 192.168.1.0/24): "
-        )
-
-    try:
-
-        # Validate network
-        ipaddress.ip_network(network, strict=False)
-
-        scan_network(network)
-
-    except ValueError:
-
-        print(
-            Fore.RED +
-            "\nInvalid network address!"
-        )
-
-        logging.error("Invalid network entered.")
-
-    except KeyboardInterrupt:
-
-        print(
-            Fore.RED +
-            "\nScan cancelled by user."
-        )
-
-        logging.warning("Scan cancelled by user.")
-
-    except Exception as e:
-
-        print(
-            Fore.RED +
-            f"\nUnexpected Error : {e}"
-        )
-
-        logging.exception(str(e))
-
-
-# -------------------------------------------------------
-# Program Entry
-# -------------------------------------------------------
-
-if __name__ == "__main__":
-
+if __name__=="__main__":
     main()
